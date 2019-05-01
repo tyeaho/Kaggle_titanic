@@ -70,7 +70,7 @@ print(Merged.info(),'\n\n')
 
 print(Merged[Merged['Age'].isnull()][['Title','Fare']].groupby(['Title']).count())
 Merged[['Title','Age']].groupby(['Title'])
-grid = sns.FacetGrid(Merged, col='Title', height=2.2, aspect=1.6) #그냥 나눠주는 애구먼?
+grid = sns.FacetGrid(Merged, col='Title', height=2.2, aspect=1.6)
 grid.map(plt.hist, 'Age', alpha=.5, bins=20)
 plt.show()
 
@@ -104,8 +104,8 @@ print(Merged.isnull().sum(),'\n\n')
 
 Merged.drop(['Name','Ticket','Cabin','Parch','SibSp'],axis=1,inplace=True)
 print(Merged.info())
-Train_new = Merged[0:891]  #0~891행까지 다
-Test_new=Merged[891:Merged.shape[0]]  #891~ 행 끝까
+Train_new = Merged[0:891]
+Test_new=Merged[891:Merged.shape[0]]
 
 
 #========================================train_test_split()===============================================
