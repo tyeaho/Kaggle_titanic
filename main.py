@@ -63,11 +63,4 @@ classifiers = [
     RandomForestClassifier(),
     AdaBoostClassifier(),
     GradientBoostingClassifier()
-]
-
-for classifier in classifiers:
-    pipe = Pipeline(steps=[('preprocessor', preprocessor),
-                      ('classifier', classifier)])
-    pipe.fit(X_train, y_train)
-    print(classifier)
-    print("model score: %.3f" % pipe.score(X_test, y_test))
+]))
