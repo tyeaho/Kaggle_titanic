@@ -70,3 +70,8 @@ for classifier in classifiers:
     pipe.fit(X_train, y_train)
     print(classifier)
     print("model score: %.3f" % pipe.score(X_test, y_test))
+    
+rf = Pipeline(steps=[('preprocessor', preprocessor),
+                      ('classifier', GradientBoostingClassifier())])
+rf.fit(train, train_Y)  #fit에는 train 데이터 인가?????? 이것들 차이좀.
+y_pred = rf.predict(test)  #predict에는 실제로 test하려던 데이터?
