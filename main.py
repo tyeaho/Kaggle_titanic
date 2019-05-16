@@ -1,21 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from pandas.plotting import scatter_matrix
-
-from sklearn.pipeline import Pipeline
-from sklearn.compose import ColumnTransformer
-from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import StandardScaler,LabelEncoder,OneHotEncoder
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.linear_model import SGDClassifier
-from sklearn.model_selection import StratifiedShuffleSplit
-from sklearn.metrics import accuracy_score, log_loss
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC, LinearSVC, NuSVC
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, GradientBoostingClassifier
+import seaborn as sns
 
 pd.set_option('display.width',3200)
 pd.set_option('display.max_columns',1000)
@@ -24,54 +10,119 @@ pd.set_option('display.max_columns',1000)
 train = pd.read_csv('~/Kaggle/titanic_2/data/train.csv')
 test = pd.read_csv('~/Kaggle/titanic_2/data/test.csv')
 
+print(train.nunique())
+print(train.describe(include='O'))
+
+#3. Analyze by pivoting features
+print(train[['Pclass', 'Survived']].groupby(['Pclass'], as_index=False).mean().sort_values(by='Survived', ascending=False),'\n')
+print(train[["Sex", "Survived"]].groupby(['Sex'], as_index=False).mean().sort_values(by='Survived', ascending=False),'\n')
+print(train[["SibSp", "Survived"]].groupby(['SibSp'], as_index=False).mean().sort_values(by='Survived', ascending=False),'\n')
+print(train[["Parch", "Survived"]].groupby(['Parch'], as_index=False).mean().sort_values(by='Survived', ascending=False),'\n')
 
 
-train_X=train.drop('Survived',axis=1)
-train_Y=train['Survived']
 
-merged=pd.concat([train_X,test],ignore_index=True)
+#4. data visualization
+g = sns.FacetGrid(train, col='Survived') #survived경우의수(0,1)만을 가지고 Age를 나타내자. 근까 죽었을때의 age histogram 안죽엇을때의 age histogram
+g.map(plt.hist, 'Age', bins=20)
 
-merged=merged.drop(['Name','PassengerId','Ticket','Cabin'],axis=1)
-print(merged.info())
+grid = sns.FacetGrid(train, col='Survived', row='Pclass', height=2.2, aspect=1.6)
+grid.map(plt.hist, 'Age', alpha=.5, bins=20)
+grid.add_legend()
 
-Train_new = merged[0:891]
-Test_new = merged[891:merged.shape[0]]
-X_train, X_test, y_train, y_test = train_test_split(train_X, train['Survived'], test_size=0.2)
+grid = sns.FacetGrid(train, col='Embarked', size=2.2, aspect=1.6)
+grid.map(sns.pointplot, 'Pclass', 'Survived','Sex', palette='deep')
+grid.add_legend()
 
-numeric_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='median')),
-    ('scaler', StandardScaler())])
-categorical_transformer = Pipeline(steps=[
-    ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-    ('onehot', OneHotEncoder(handle_unknown='ignore'))])
+grid = sns.FacetGrid(train, row='Embarked', col='Survived', size=2.2, aspect=1.6)
+grid.map(sns.barplot, 'Sex', 'Fare', alpha=.5, ci=None)
+grid.add_legend()
 
-numeric_features =['Age','Fare']
+plt.show()
 
-categorical_features =['Sex','Embarked']
+#5. data manage
+combine=pd.concat([train,test],sort=False)
+combine['Title']=combine['Name'].map(lambda x:x.split(',')[1].split('.')[0].strip())
+print(pd.crosstab(combine['Title'],combine['Sex']))
 
-preprocessor = ColumnTransformer(
-    transformers=[
-        ('num', numeric_transformer, numeric_features),
-        ('cat', categorical_transformer, categorical_features)])
 
-classifiers = [
-    KNeighborsClassifier(3),
-    SVC(kernel="rbf", C=0.025, probability=True),
-    NuSVC(probability=True),
-    DecisionTreeClassifier(),
-    RandomForestClassifier(),
-    AdaBoostClassifier(),
-    GradientBoostingClassifier()
-]
+def Title_mapping():
+    dict={'Mr':'Mr',
+          'Mrs':'Mrs',
+          'Miss':'Miss',
+          'Master':'Master',
+          'Don':'Rare',
+          'Rev':'Rare',
+          'Dr':'Rare',
+          'Mme':'Mrs',
+          'Ms':'Miss',
+          'Major':'Rare',
+          'Lady':'Rare',
+          'Sir':'Rare',
+          'Mlle':'Rare',
+          'Col':'Rare',
+          'Capt':'Rare',
+          'the Countess':'Rare',
+          'Jonkheer':'Rare',
+          'Dona':'Rare'}
+    combine['Title']=combine['Title'].map(dict)
+Title_mapping()
 
-for classifier in classifiers:
-    pipe = Pipeline(steps=[('preprocessor', preprocessor),
-                      ('classifier', classifier)])
-    pipe.fit(X_train, y_train)
-    print(classifier)
-    print("model score: %.3f" % pipe.score(X_test, y_test))
-    
-rf = Pipeline(steps=[('preprocessor', preprocessor),
-                      ('classifier', GradientBoostingClassifier())])
-rf.fit(train, train_Y)  #fit에는 train 데이터 인가?????? 이것들 차이좀.
-y_pred = rf.predict(test)  #predict에는 실제로 test하려던 데이터?
+print(combine[['Title','Survived']].groupby(['Title'],as_index=False).mean())
+
+title_into_ordinal={'Master':0,'Miss':1,'Mr':2,'Mrs':3,'Rare':4}
+combine['Title']=combine['Title'].map(title_into_ordinal)
+combine.drop(['Name','PassengerId','Ticket','Cabin'],axis=1,inplace=True)
+
+#make ordinal
+combine['Sex']=combine['Sex'].map({'female':0,'male':1})
+#fill null data of 'Embarked' & make ordinal
+combine['Embarked']=combine['Embarked'].fillna('S')     #2개 missing된거 simply fill with most frequent
+combine['Embarked']=combine['Embarked'].map({'C':0,'Q':1,'S':2})
+
+#fill null data of 'Age'
+grid= sns.FacetGrid(combine,row='Pclass',col='Title')
+grid.map(plt.hist,'Age')
+grid.add_legend()
+plt.show()
+
+corr_matrix=combine.corr()
+print(corr_matrix['Age'].sort_values(ascending=True))
+guess_ages = np.zeros((3,5))
+
+for i in range(0, 3):
+    for j in range(0, 5):
+        guess_df = combine[(combine['Pclass'] == i+1) & (combine['Title'] == j)]['Age'].dropna()
+        age_guess = guess_df.median()
+        # print(age_guess)
+        # Convert random age float to nearest .5 age
+        if ((i == 2) & (j == 4)):
+            age_guess = 0
+        guess_ages[i, j] = age_guess
+
+for i in range(0, 3):
+    for j in range(0, 5):
+        combine.loc[(combine.Age.isnull()) & (combine.Pclass == i+1) & (combine.Title == j), 'Age'] = guess_ages[i, j]
+
+
+combine['AgeBand']=pd.cut(combine['Age'],5)
+print(combine[['AgeBand','Survived']].groupby(['AgeBand'],as_index=False).mean())
+
+#make 'AgeBand'
+combine.loc[combine['Age']<16,'Age']=0
+combine.loc[(combine['Age']>=16)&(combine['Age']<32),'Age']=1
+combine.loc[(combine['Age']>=32)&(combine['Age']<48),'Age']=2
+combine.loc[(combine['Age']>=48)&(combine['Age']<64),'Age']=3
+combine.loc[combine['Age']>=64,'Age']=4
+
+combine.drop(['AgeBand'],axis=1,inplace=True)
+
+
+
+#make 'FamilySize'
+combine['FamilySize']=combine['Parch']+combine['SibSp']+1
+
+#make 'IsAlone'
+combine['IsAlone']=0
+combine.loc[combine['FamilySize']==1,'IsAlone']=1
+print(combine)
+
